@@ -46,6 +46,7 @@ public class IntListExercises {
             }
             p = p.rest;
         }
+        //System.out.println(max);
         return max;
     }
 
@@ -53,11 +54,22 @@ public class IntListExercises {
      *  the first digit of x.
      */
     public static boolean firstDigitEqualsLastDigit(int x) {
-        int lastDigit = x % 10;
-        while (x > 10) {
-            x = x / 10;
+        //System.out.println("x:"+x);
+        int firstDigit,lastDigit;
+        if(x==10){
+            lastDigit = 0;
+            firstDigit = 1;
+        }else if(x<10){
+            lastDigit = 1;
+            firstDigit = 1;
+        }else{
+            lastDigit = x % 10;
+            while (x > 10) {
+                x = x / 10;
+            }
+            firstDigit = x % 10;
         }
-        int firstDigit = x % 10;
+        //System.out.println("first:"+firstDigit+"  last:"+lastDigit);
         return firstDigit == lastDigit;
     }
 
