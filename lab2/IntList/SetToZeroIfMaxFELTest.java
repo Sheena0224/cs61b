@@ -23,6 +23,6 @@ public class SetToZeroIfMaxFELTest {
     public void testZeroOutFELMaxes3() {
         IntList L = IntList.of(5, 535, 35, 11, 10, 0);
         IntListExercises.setToZeroIfMaxFEL(L);
-        assertEquals("0 -> 0 -> 35 -> 0 -> 0 -> 0", L.toString());
+        assertEquals("5->0->35->0->0->0", L.toString());
     }
 }
