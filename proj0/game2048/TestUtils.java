@@ -3,7 +3,6 @@ package game2048;
 import static org.junit.Assert.*;
 
 public class TestUtils {
-
     /** The Model we'll be testing. */
     static Model model;
     /** The size of the Board on these tests. */

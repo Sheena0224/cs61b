@@ -107,12 +107,55 @@ public class Model extends Observable {
      *    and the trailing tile does not.
      * */
     public boolean tilt(Side side) {
-        boolean changed;
-        changed = false;
+        boolean changed = false;
+        this.board.setViewingPerspective(side);
 
-        // TODO: Modify this.board (and perhaps this.score) to account
-        // for the tilt to the Side SIDE. If the board changed, set the
-        // changed local variable to true.
+        int size = this.board.size();
+
+        for (int col = 0; col < size; col++) {
+            boolean[] merged = new boolean[size];
+
+            for (int row = size - 2; row >= 0; row--) {
+                Tile current = this.board.tile(col, row);
+                if (current == null) continue; // 跳过空格
+
+                int targetRow = row + 1;
+
+                while (targetRow < size) {
+                    Tile target = this.board.tile(col, targetRow);
+
+                    if (target == null) {
+                        if (targetRow == size - 1) {
+                            this.board.move(col, targetRow, current);
+                            changed = true;
+                            break;
+                        }
+                        targetRow++;
+                        continue;
+                    }
+
+                    if (target.value() != current.value() || merged[targetRow]) {
+                        if (targetRow - 1 != row) { // 需要移动
+                            this.board.move(col, targetRow - 1, current);
+                            changed = true;
+                        }
+                        break;
+                    }
+
+                    if (target.value() == current.value() && !merged[targetRow]) {
+                        this.board.move(col, targetRow, current);
+                        this.score += current.value() * 2; // 更新分数
+                        merged[targetRow] = true; // 标记已合并
+                        changed = true;
+                        break;
+                    }
+
+                    targetRow++;
+                }
+            }
+        }
+
+        this.board.setViewingPerspective(Side.NORTH);
 
         checkGameOver();
         if (changed) {
@@ -138,6 +181,14 @@ public class Model extends Observable {
      * */
     public static boolean emptySpaceExists(Board b) {
         // TODO: Fill in this function.
+        int size = b.size();
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < size; col++) {
+                if (b.tile(col, row) == null) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -148,6 +199,14 @@ public class Model extends Observable {
      */
     public static boolean maxTileExists(Board b) {
         // TODO: Fill in this function.
+        int size = b.size();
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < size; col++) {
+                if (b.tile(col, row) != null && b.tile(col, row).value() == MAX_PIECE) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -159,6 +218,33 @@ public class Model extends Observable {
      */
     public static boolean atLeastOneMoveExists(Board b) {
         // TODO: Fill in this function.
+        int size = b.size();
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < size; col++) {
+                if (b.tile(col, row) == null) {
+                    return true;
+                }
+            }
+        }
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < size; col++) {
+                Tile current = b.tile(col, row);
+                if (current != null) {
+                    if (col + 1 < size) {
+                        Tile right = b.tile(col + 1, row);
+                        if (right != null && right.value() == current.value()) {
+                            return true;
+                        }
+                    }
+                    if (row + 1 < size) {
+                        Tile down = b.tile(col, row + 1);
+                        if (down != null && down.value() == current.value()) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
         return false;
     }
 
