@@ -53,10 +53,15 @@ public class Main {
         case "dog":
             validateNumArgs("dog", args, 4);
             // TODO: make a dog
+            Dog dog = new Dog(args[1], args[2], Integer.parseInt(args[3]));
+            dog.saveDog();
             break;
         case "birthday":
             validateNumArgs("birthday", args, 2);
             // TODO: celebrate this dog's birthday
+            Dog bdog = Dog.fromFile(args[1]); // 从文件加载狗的信息
+            bdog.haveBirthday();
+            bdog.saveDog();
             break;
         default:
             exitWithError(String.format("Unknown command: %s", args[0]));
