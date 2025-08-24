@@ -1,6 +1,10 @@
 package hashmap;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  *  A hash table-backed Map implementation. Provides amortized constant time
@@ -10,6 +14,117 @@ import java.util.Collection;
  *  @author YOUR NAME HERE
  */
 public class MyHashMap<K, V> implements Map61B<K, V> {
+
+    private Collection<Node>[] buckets;
+    private Set<K> keySet;        // 必须是 Set<K> 类型
+    private int size;
+    private double loadFactor;
+
+    private int hash(K key) {
+        return (key.hashCode() & 0x7fffffff) % buckets.length;
+    }
+
+    @Override
+    public void clear() {
+        buckets = createTable(16);  // 重置为默认大小
+        size = 0;
+        keySet.clear();
+    }
+
+    @Override
+    public boolean containsKey(K key) {
+        int index = hash(key);
+        Collection<Node> bucket = buckets[index];
+
+        for (Node node : bucket) {
+            if (node.key.equals(key)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public V get(K key) {
+        int index = hash(key);
+        Collection<Node> bucket = buckets[index];
+
+        for (Node node : bucket) {
+            if (node.key.equals(key)) {
+                return node.value;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public int size() {
+        return size;
+    }
+
+    private void resize(int newSize) {
+        Collection<Node>[] newBuckets = createTable(newSize);
+
+        for (Collection<Node> bucket : buckets) {
+            for (Node node : bucket) {
+                int newIndex = (node.key.hashCode() & 0x7fffffff) % newSize;
+                newBuckets[newIndex].add(node);
+            }
+        }
+
+        buckets = newBuckets;
+    }
+
+    @Override
+    public void put(K key, V value) {
+        if ((double) size / buckets.length > loadFactor) {
+            resize(buckets.length * 2);
+        }
+
+        int index = hash(key);
+        Collection<Node> bucket = buckets[index]; // 此时bucket可能为null
+
+        // +++ 新增的检查逻辑 +++
+        if (bucket == null) {
+            bucket = new ArrayList<>(); // 或 LinkedList<>(), 根据你的需求定
+            buckets[index] = bucket; // 将新初始化的桶放回数组
+        }
+        // +++ 检查逻辑结束 +++
+
+        // 移除有问题的第83行的 add
+        // bucket.add(new Node(key, value)); // <-- 注释掉或删除这一行
+
+        for (Node node : bucket) {
+            if (node.key.equals(key)) {
+                node.value = value;
+                return;
+            }
+        }
+        // 现在这个 add 是安全的，因为bucket肯定不是null
+        bucket.add(new Node(key, value));
+        keySet.add(key);
+        size++;
+    }
+
+    @Override
+    public Set<K> keySet() {
+        return (Set<K>) keySet;
+    }
+
+    @Override
+    public V remove(K key) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public V remove(K key, V value) {
+        return null;
+    }
+
+    @Override
+    public Iterator<K> iterator() {
+        return (Iterator<K>) keySet.iterator();
+    }
 
     /**
      * Protected helper class to store key/value pairs
@@ -26,23 +141,32 @@ public class MyHashMap<K, V> implements Map61B<K, V> {
     }
 
     /* Instance Variables */
-    private Collection<Node>[] buckets;
     // You should probably define some more!
 
     /** Constructors */
-    public MyHashMap() { }
+    public MyHashMap() {
+        this(16, 0.75);
+    }
 
-    public MyHashMap(int initialSize) { }
+    public MyHashMap(int initialSize) {
+        this(initialSize, 0.75);
+    }
 
     /**
      * MyHashMap constructor that creates a backing array of initialSize.
      * The load factor (# items / # buckets) should always be <= loadFactor
      *
      * @param initialSize initial size of backing array
-     * @param maxLoad maximum load factor
+     * @param loadFactor maximum load factor
      */
-    public MyHashMap(int initialSize, double maxLoad) { }
-
+    //public MyHashMap(int initialSize, double maxLoad) { }
+    @SuppressWarnings("unchecked")
+    public MyHashMap(int initialSize, double loadFactor) {
+        buckets = (Collection<Node>[]) new Collection[initialSize];
+        keySet = new HashSet<>();
+        size = 0;
+        this.loadFactor = loadFactor;
+    }
     /**
      * Returns a new node to be placed in a hash table bucket
      */
@@ -82,7 +206,11 @@ public class MyHashMap<K, V> implements Map61B<K, V> {
      * @param tableSize the size of the table to create
      */
     private Collection<Node>[] createTable(int tableSize) {
-        return null;
+        Collection<Node>[] table = new Collection[tableSize];
+        for (int i = 0; i < tableSize; i++) {
+            table[i] = createBucket();
+        }
+        return table;
     }
 
     // TODO: Implement the methods of the Map61B Interface below
