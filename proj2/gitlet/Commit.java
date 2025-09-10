@@ -26,6 +26,20 @@ public class Commit implements Serializable{
     private HashMap<String, String> trackedFiles;
     /** 提交信息 */
     private String message;
+    /** 父提交的哈希值 */
+    private String parent;
+    /** 设置父提交哈希 */
+    public void setParent(String parentHash) {
+        this.parent = parentHash;
+    }
+    /** 设置跟踪的文件映射 */
+    public void setTrackedFiles(HashMap<String, String> trackedFiles) {
+        this.trackedFiles = trackedFiles;
+    }
+    /** 获取父提交哈希 */
+    public String getParent() {
+        return parent;
+    }
 
     /* TODO: fill in the rest of this class. */
     /** 默认构造函数，用于创建初始提交 */

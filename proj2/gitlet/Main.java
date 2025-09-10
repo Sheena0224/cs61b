@@ -1,6 +1,8 @@
 package gitlet;
 import java.io.File;
 import java.util.Date;
+import java.io.IOException;
+import java.util.HashMap;
 /** Driver class for Gitlet, a subset of the Git version-control system.
  *  @author TODO
  */
@@ -38,6 +40,20 @@ public class Main {
                 add(args[1]);
                 break;
             // TODO: FILL THE REST IN
+            case "commit":
+                if (args.length != 2) {
+                    System.out.println("使用方法: java gitlet.Main commit [消息]");
+                    System.exit(0);
+                }
+                commit(args[1]);
+                break;
+            case "rm":
+                if (args.length != 2) {
+                    System.out.println("使用方法: java gitlet.Main rm [文件名]");
+                    System.exit(0);
+                }
+                rm(args[1]);
+                break;
             default:
                 System.out.println("无效命令: " + firstArg);
                 System.exit(0);
@@ -116,5 +132,117 @@ public class Main {
     private static Commit getCommit(String commitHash) {
         File commitFile = Utils.join(COMMITS_DIR, commitHash);
         return Utils.readObject(commitFile, Commit.class);
+    }
+
+    /** 提交命令实现 */
+    private static void commit(String message) {
+        // 检查Gitlet是否已初始化
+        if (!GITLET_DIR.exists()) {
+            System.out.println("尚未初始化Gitlet版本控制系统");
+            System.exit(0);
+        }
+
+        // 检查提交消息是否为空
+        if (message == null || message.trim().isEmpty()) {
+            System.out.println("请输入一个提交信息。");
+            System.exit(0);
+        }
+
+        // 检查暂存区是否为空
+        String[] stagedFiles = STAGING_DIR.list();
+        if (stagedFiles == null || stagedFiles.length == 0) {
+            System.out.println("未向提交中添加任何变更。");
+            System.exit(0);
+        }
+
+        // 读取当前HEAD指向的提交
+        String headHash = Utils.readContentsAsString(HEAD_FILE);
+        Commit parentCommit = getCommit(headHash);
+
+        // 创建新提交
+        Commit newCommit = new Commit();
+        newCommit.setMessage(message);
+        newCommit.setTimestamp(new Date());
+        newCommit.setParent(headHash); // 设置父提交
+
+        // 继承父提交的文件跟踪状态
+        HashMap<String, String> newTrackedFiles = new HashMap<>(parentCommit.getTrackedFiles());
+        File[] rmMarkers = STAGING_DIR.listFiles((dir, name) -> name.startsWith("RM_"));
+        if (rmMarkers != null) {
+            for (File rmMarker : rmMarkers) {
+                String filename = rmMarker.getName().substring(3); // 移除"RM_"前缀
+                newTrackedFiles.remove(filename); // 从跟踪文件中移除
+                rmMarker.delete(); // 删除标记文件
+            }
+        }
+
+        // 处理暂存区中的文件
+        for (String filename : stagedFiles) {
+            File stagedFile = Utils.join(STAGING_DIR, filename);
+            if (stagedFile.exists()) {
+                // 读取文件内容并计算哈希
+                byte[] fileContent = Utils.readContents(stagedFile);
+                String fileHash = Utils.sha1(fileContent);
+
+                // 更新或添加文件到跟踪列表
+                newTrackedFiles.put(filename, fileHash);
+
+                // 删除暂存文件
+                stagedFile.delete();
+            }
+        }
+
+        // 设置新提交的跟踪文件
+        newCommit.setTrackedFiles(newTrackedFiles);
+
+        // 保存新提交
+        newCommit.save();
+
+        // 更新HEAD指向新提交
+        String newCommitHash = Utils.sha1(Utils.serialize(newCommit));
+        Utils.writeContents(HEAD_FILE, newCommitHash);
+
+        System.out.println("提交完成: " + message);
+    }
+
+    /** 移除文件 */
+    private static void rm(String filename) {
+        // 检查Gitlet是否已初始化
+        if (!GITLET_DIR.exists()) {
+            System.out.println("尚未初始化Gitlet版本控制系统");
+            System.exit(0);
+        }
+
+        // 读取当前HEAD指向的提交
+        String headHash = Utils.readContentsAsString(HEAD_FILE);
+        Commit headCommit = getCommit(headHash);
+
+        // 检查文件是否被跟踪
+        boolean isTracked = headCommit.getTrackedFiles().containsKey(filename);
+
+        // 检查文件是否在暂存区
+        File stagedFile = Utils.join(STAGING_DIR, filename);
+        boolean isStaged = stagedFile.exists();
+
+        if (!isTracked && !isStaged) {
+            System.out.println("没有理由删除该文件。");
+            System.exit(0);
+        }
+
+        // 如果文件被跟踪，从暂存区标记为删除（创建空文件作为标记）
+        if (isTracked) {
+            File rmMarker = Utils.join(STAGING_DIR, "RM_" + filename);
+            try {
+                rmMarker.createNewFile();
+            } catch (IOException e) {
+                System.out.println("无法创建删除标记文件");
+                System.exit(0);
+            }
+        }
+
+        // 如果文件在暂存区，移除它
+        if (isStaged) {
+            stagedFile.delete();
+        }
     }
 }
