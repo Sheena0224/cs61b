@@ -3,6 +3,7 @@ import java.io.File;
 import java.util.Date;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Formatter;
 /** Driver class for Gitlet, a subset of the Git version-control system.
  *  @author TODO
  */
@@ -53,6 +54,13 @@ public class Main {
                     System.exit(0);
                 }
                 rm(args[1]);
+                break;
+            case "log":
+                if (args.length != 1) {
+                    System.out.println("使用方法: java gitlet.Main log");
+                    System.exit(0);
+                }
+                log();
                 break;
             default:
                 System.out.println("无效命令: " + firstArg);
@@ -243,6 +251,41 @@ public class Main {
         // 如果文件在暂存区，移除它
         if (isStaged) {
             stagedFile.delete();
+        }
+    }
+
+    /** 日志命令实现 - 显示提交历史 */
+    private static void log() {
+        // 检查Gitlet是否已初始化
+        if (!GITLET_DIR.exists()) {
+            System.out.println("尚未初始化Gitlet版本控制系统");
+            System.exit(0);
+        }
+
+        // 获取当前HEAD指向的提交哈希
+        String currentHash = Utils.readContentsAsString(HEAD_FILE);
+
+        // 遍历提交历史
+        while (currentHash != null) {
+            Commit commit = getCommit(currentHash);
+
+            // 按照图片要求的格式显示提交信息
+            System.out.println("===");
+            System.out.println("commit " + currentHash);
+
+            // 格式化日期（按照图片要求显示本地时区时间）
+            java.util.Formatter formatter = new java.util.Formatter();
+            formatter.format("日期: %ta %tb %td %tT %tY %tz",
+                    commit.getTimestamp(), commit.getTimestamp(), commit.getTimestamp(),
+                    commit.getTimestamp(), commit.getTimestamp(), commit.getTimestamp());
+            System.out.println(formatter.toString());
+            formatter.close();
+
+            System.out.println(commit.getMessage());
+            System.out.println();
+
+            // 移动到父提交
+            currentHash = commit.getParent();
         }
     }
 }

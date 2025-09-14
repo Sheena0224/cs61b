@@ -28,6 +28,7 @@ public class Commit implements Serializable{
     private String message;
     /** 父提交的哈希值 */
     private String parent;
+
     /** 设置父提交哈希 */
     public void setParent(String parentHash) {
         this.parent = parentHash;
@@ -80,5 +81,15 @@ public class Commit implements Serializable{
     private static Commit getCommit(String hash) {
         File commitFile = Utils.join(Main.COMMITS_DIR, hash);
         return Utils.readObject(commitFile, Commit.class);
+    }
+
+    /** 获取提交消息 */
+    public String getMessage() {
+        return message;
+    }
+
+    /** 获取时间戳 */
+    public Date getTimestamp() {
+        return timestamp;
     }
 }
