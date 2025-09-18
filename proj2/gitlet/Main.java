@@ -24,15 +24,15 @@ public class Main {
         // 参数为空
         if (args.length == 0) {
             System.out.println("请输入命令参数");
-            System.exit(0);
+            System.exit(0);//终止程序运行
         }
-        String firstArg = args[0];
+        String firstArg = args[0];//获取命令行第一个参数
         switch(firstArg) {
-            case "init":
+            case "init"://初始化
                 // TODO: handle the `init` command
                 init();
                 break;
-            case "add":
+            case "add"://添加
                 // TODO: handle the `add [filename]` command
                 if (args.length != 2) {
                     System.out.println("使用方法: java gitlet.Main add [文件名]");
@@ -41,26 +41,40 @@ public class Main {
                 add(args[1]);
                 break;
             // TODO: FILL THE REST IN
-            case "commit":
+            case "commit"://提交
                 if (args.length != 2) {
                     System.out.println("使用方法: java gitlet.Main commit [消息]");
                     System.exit(0);
                 }
                 commit(args[1]);
                 break;
-            case "rm":
+            case "rm"://删除
                 if (args.length != 2) {
                     System.out.println("使用方法: java gitlet.Main rm [文件名]");
                     System.exit(0);
                 }
                 rm(args[1]);
                 break;
-            case "log":
+            case "log"://日志
                 if (args.length != 1) {
                     System.out.println("使用方法: java gitlet.Main log");
                     System.exit(0);
                 }
                 log();
+                break;
+            case "find"://查找
+                if (args.length != 2) {
+                    System.out.println("使用方法: java gitlet.Main find [提交信息]");
+                    System.exit(0);
+                }
+                find(args[1]);
+                break;
+            case "status":
+                if (args.length != 1) {
+                    System.out.println("使用方法: java gitlet.Main status");
+                    System.exit(0);
+                }
+                status();
                 break;
             default:
                 System.out.println("无效命令: " + firstArg);
@@ -81,12 +95,12 @@ public class Main {
         STAGING_DIR.mkdir(); // 创建暂存区目录
 
         // 创建初始提交
-        Commit initialCommit = new Commit();
-        initialCommit.setMessage("初始提交");
+        Commit initialCommit = new Commit();//创建空提交对象
+        initialCommit.setMessage("初始提交");//设置提交信息
         initialCommit.setTimestamp(new Date(0));  // Unix纪元时间
 
         // 保存初始提交
-        initialCommit.save();
+        initialCommit.save();//保存到.gitlet/commits/目录
 
         // 设置HEAD指向初始提交
         String initialCommitHash = Utils.sha1(Utils.serialize(initialCommit));
@@ -286,6 +300,87 @@ public class Main {
 
             // 移动到父提交
             currentHash = commit.getParent();
+        }
+    }
+
+    /** 查找命令实现 - 根据提交消息查找提交 */
+    private static void find(String commitMessage) {
+        // 检查Gitlet是否已初始化
+        if (!GITLET_DIR.exists()) {
+            System.out.println("尚未初始化Gitlet版本控制系统");
+            System.exit(0);
+        }
+
+        boolean found = false;
+
+        // 遍历所有提交文件
+        String[] commitFiles = COMMITS_DIR.list();
+        if (commitFiles != null) {
+            for (String commitHash : commitFiles) {
+                try {
+                    Commit commit = getCommit(commitHash);
+                    if (commit.getMessage().equals(commitMessage)) {
+                        System.out.println(commitHash);
+                        found = true;
+                    }
+                } catch (Exception e) {
+                    // 忽略无效的提交文件
+                    continue;
+                }
+            }
+        }
+
+        // 如果没有找到匹配的提交
+        if (!found) {
+            System.out.println("找不到具有该消息的提交");
+            System.exit(0);
+        }
+    }
+
+    /** 状态命令实现 - 显示完整状态信息 */
+    private static void status() {
+        if (!GITLET_DIR.exists()) {
+            System.out.println("尚未初始化Gitlet版本控制系统");
+            System.exit(0);
+        }
+
+        // 1. 显示分支信息
+        System.out.println("=== 分支 ===");
+        System.out.println("*主分支");
+        System.out.println();
+
+        // 2. 显示暂存文件（已添加）
+        System.out.println("=== 阶段化文件 ===");
+        displayStagedFiles();
+        System.out.println();
+
+        // 3. 显示删除文件（已标记删除）
+        System.out.println("=== 已删除文件 ===");
+        displayRemovedFiles();
+        System.out.println();
+    }
+
+    /** 显示暂存文件 */
+    private static void displayStagedFiles() {
+        String[] stagedFiles = STAGING_DIR.list();
+        if (stagedFiles != null) {
+            for (String filename : stagedFiles) {
+                if (!filename.startsWith("RM_")) {
+                    System.out.println(filename);
+                }
+            }
+        }
+    }
+
+    /** 显示删除文件 */
+    private static void displayRemovedFiles() {
+        String[] stagedFiles = STAGING_DIR.list();
+        if (stagedFiles != null) {
+            for (String filename : stagedFiles) {
+                if (filename.startsWith("RM_")) {
+                    System.out.println(filename.substring(3));
+                }
+            }
         }
     }
 }
