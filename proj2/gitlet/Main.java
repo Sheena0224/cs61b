@@ -90,9 +90,6 @@ public class Main {
                 } else if (args.length == 4 && args[2].equals("--")) {
                     // 用法2: checkout [提交ID] -- [文件名]
                     checkoutFileFromCommit(args[1], args[3]);
-                } else if (args.length == 2) {
-                    // 用法3: checkout [分支名称]
-                    checkoutBranch(args[1]);
                 } else {
                     System.out.println("无效的checkout命令格式");
                     System.exit(0);
@@ -129,17 +126,7 @@ public class Main {
         Utils.writeContents(HEAD_FILE, initialCommitHash);
 
         System.out.println("Gitlet版本控制系统初始化完成");
-        File refsDir = Utils.join(GITLET_DIR, "refs");
-        File headsDir = Utils.join(refsDir, "heads");
-        refsDir.mkdir();
-        headsDir.mkdir();
-
-        // 创建主分支引用文件
-        File masterBranch = Utils.join(headsDir, "主分支");
-        Utils.writeContents(masterBranch, initialCommitHash);
-
-        // 设置HEAD指向主分支
-        Utils.writeContents(HEAD_FILE, "ref: refs/heads/主分支");
+        Utils.writeContents(HEAD_FILE, initialCommitHash);
     }
 
     private static void add(String filename) {
@@ -159,7 +146,7 @@ public class Main {
 
         // 读取当前HEAD指向的提交
         String headHash = Utils.readContentsAsString(HEAD_FILE);
-        Commit headCommit = getCommitFromRef(headHash);
+        Commit headCommit = getCommit(headHash);
 
         // 读取文件内容
         byte[] fileContent = Utils.readContents(fileToAdd);
@@ -183,32 +170,9 @@ public class Main {
         File stagedFile = Utils.join(STAGING_DIR, filename);
         Utils.writeContents(stagedFile, fileContent);
     }
-    private static Commit getCommitFromRef(String reference) {
-        // 处理分支引用
-        if (reference.startsWith("ref:")) {
-            String branchPath = reference.substring(4).trim();
-            File branchFile = Utils.join(GITLET_DIR, branchPath);
-            if (branchFile.exists()) {
-                String commitHash = Utils.readContentsAsString(branchFile);
-                return getCommit(commitHash); // 获取实际提交
-            }
-        }
-
-        // 直接提交哈希
-        return getCommit(reference);
-    }
 
     /** 添加getCommit方法在这里 */
     private static Commit getCommit(String reference) {
-        // 如果是分支引用（以 "ref:" 开头）
-        if (reference.startsWith("ref:")) {
-            String branchPath = reference.substring(4).trim(); // 移除 "ref:" 前缀
-            File branchFile = Utils.join(GITLET_DIR, branchPath);
-            if (branchFile.exists()) {
-                String commitHash = Utils.readContentsAsString(branchFile);
-                return getCommit(commitHash); // 递归获取实际提交
-            }
-        }
         File commitFile = Utils.join(COMMITS_DIR, reference);
         return Utils.readObject(commitFile, Commit.class);
     }
@@ -506,46 +470,6 @@ public class Main {
         }
     }
 
-    /** checkout 用法3: 切换到指定分支 */
-    private static void checkoutBranch(String branchName) {
-        // 检查Gitlet是否已初始化
-        if (!GITLET_DIR.exists()) {
-            System.out.println("尚未初始化Gitlet版本控制系统");
-            System.exit(0);
-        }
-
-        // 检查分支是否存在（需要实现分支功能）
-        File branchFile = Utils.join(GITLET_DIR, "refs", "heads", branchName);
-        if (!branchFile.exists()) {
-            System.out.println("不存在该分支");
-            System.exit(0);
-        }
-
-        // 检查是否为当前分支
-        String currentBranch = getCurrentBranch();
-        if (branchName.equals(currentBranch)) {
-            System.out.println("无需切换至当前分支");
-            System.exit(0);
-        }
-
-        // 检查未跟踪文件冲突（需要实现）
-        checkUntrackedFilesConflict(branchName);
-
-        // 获取分支指向的提交
-        String branchHeadHash = Utils.readContentsAsString(branchFile);
-        Commit branchHeadCommit = getCommit(branchHeadHash);
-
-        // 清空工作目录并检出分支文件
-        clearWorkingDirectory();
-        restoreFilesFromCommit(branchHeadCommit);
-
-        // 更新HEAD指向新分支
-        Utils.writeContents(HEAD_FILE, "ref: refs/heads/" + branchName);
-
-        // 清空暂存区
-        clearStagingArea();
-    }
-
     /** 解析可能缩写的提交哈希 */
     private static String resolveCommitHash(String shortHash) {
         if (shortHash.length() == 40) {
@@ -564,35 +488,6 @@ public class Main {
             }
         }
         return null;
-    }
-
-    /** 检查未跟踪文件冲突 */
-    private static void checkUntrackedFilesConflict(String targetBranch) {
-        // 获取当前HEAD提交
-        String currentHeadHash = Utils.readContentsAsString(HEAD_FILE);
-        Commit currentCommit = getCommit(currentHeadHash);
-
-        // 获取目标分支HEAD提交
-        File branchFile = Utils.join(GITLET_DIR, "refs", "heads", targetBranch);
-        String branchHeadHash = Utils.readContentsAsString(branchFile);
-        Commit branchCommit = getCommit(branchHeadHash);
-
-        // 检查工作目录中的未跟踪文件
-        File[] workingFiles = new File(".").listFiles();
-        if (workingFiles != null) {
-            for (File file : workingFiles) {
-                if (file.isFile() && !file.getName().equals(".gitlet")) {
-                    String filename = file.getName();
-
-                    // 如果文件未被当前提交跟踪，但会被目标分支覆盖
-                    if (!currentCommit.getTrackedFiles().containsKey(filename) &&
-                            branchCommit.getTrackedFiles().containsKey(filename)) {
-                        System.out.println("当前路径中存在未跟踪文件；请先删除该文件，然后添加并提交");
-                        System.exit(0);
-                    }
-                }
-            }
-        }
     }
 
     /** 从提交恢复文件到工作目录 */
@@ -629,14 +524,5 @@ public class Main {
                 file.delete();
             }
         }
-    }
-
-    /** 获取当前分支名称 */
-    private static String getCurrentBranch() {
-        String headContent = Utils.readContentsAsString(HEAD_FILE);
-        if (headContent.startsWith("ref: ")) {
-            return headContent.substring(5).replace("refs/heads/", "");
-        }
-        return "主分支"; // 默认分支
     }
 }
